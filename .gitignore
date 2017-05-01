@@ -242,3 +242,4 @@ ModelManifest.xml
 .fake/
 
 # Shhhh, it's a secret
+*.[Ss]ecrets.config
