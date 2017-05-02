@@ -1,24 +1,26 @@
-﻿namespace ThirdThursdayBot
+﻿using System;
+
+namespace ThirdThursdayBot
 {
     public class Constants
     {
-        public const string DefaultResponseMessage =
-            @"Hi, I'm Third Thursday Bot! I support the following commands:\r\n
-            - 'show all' Lists all of the previous Third Thursday selections.\r\n
-            - 'have we been to {restaurant}?' Indicates if specific restaurant has been chosen.\r\n
-            - 'who's turn is it' - Indicates who has the next selection.\r\n";
+        public readonly static string DefaultResponseMessage =
+            $@"Hi, I'm Third Thursday Bot! I support the following commands: {Environment.NewLine}
+            - 'show all' Lists all of the previous Third Thursday selections. {Environment.NewLine}
+            - 'have we been to {{restaurant}}?' Indicates if specific restaurant has been chosen. {Environment.NewLine}
+            - 'who's next' - Indicates who has the next selection. {Environment.NewLine}";
 
-        public const string RestaurantListingMessage =
-            @"All of the following restaurants have been visited:\r\n";
+        public readonly static string RestaurantListingMessage =
+            $"All of the following restaurants have been visited: {Environment.NewLine}";
 
         public const string NextChooserFormattingMessage =
-            @"{0} has the next choice for {1}.";
+            @"{0} has the next choice for {1:MMM}.";
 
         public const string UnchosenRestaurantFormattingMessage =
             @"{0} has not been chosen before. Give it a shot!";
 
         public const string PreviouslyChosenResturantFormattingMessage =
-            @"{0} was chosen by {1} in {2}";
+            @"{0} was chosen by {1} in {2:MMM} of {2:yyyy}";
 
         public const string UnrecognizableRestaurantMessage =
             @"Sorry, I couldn't figure out what restaurant you were looking for. Try again.";
