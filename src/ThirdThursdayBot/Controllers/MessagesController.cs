@@ -32,11 +32,7 @@ namespace ThirdThursdayBot
             {
                 var message = activity.Text;
 
-                if (Regex.IsMatch(message, "show|all", RegexOptions.IgnoreCase))
-                {
-                    await ReplyWithRestaurantListingAsync(activity, connector);
-                }
-                else if (Regex.IsMatch(message, "(?<=have we been to )(?<restaurant>[^?]+)", RegexOptions.IgnoreCase))
+                if (Regex.IsMatch(message, "(?<=have we been to )(?<restaurant>[^?]+)", RegexOptions.IgnoreCase))
                 {
                     var restaurant = Regex.Match(message, @"(?<=have we been to )(?<restaurant>[^?]+)", RegexOptions.IgnoreCase)?.Groups["restaurant"]?.Value ?? "";
                     if (!string.IsNullOrWhiteSpace(restaurant))
@@ -53,10 +49,16 @@ namespace ThirdThursdayBot
                             await ReplyWithUnchosenRestaurantAsync(restaurant, activity, connector);
                         }
                     }
-
-                    await ReplyWithUnrecognizableRestaurantAsync(activity, connector);
+                    else
+                    {
+                        await ReplyWithUnrecognizableRestaurantAsync(activity, connector);
+                    }
                 }
-                else if (Regex.IsMatch(message, "who's turn|who is next", RegexOptions.IgnoreCase))
+                else if (Regex.IsMatch(message, "show|all|list all", RegexOptions.IgnoreCase))
+                {
+                    await ReplyWithRestaurantListingAsync(activity, connector);
+                }
+                else if (Regex.IsMatch(message, "who's next|who is next|whose (pick|turn) is it", RegexOptions.IgnoreCase))
                 {
                     await ReplyWithNextMemberToChoose(activity, connector);
                 }
@@ -76,7 +78,8 @@ namespace ThirdThursdayBot
                 var lastRestaurantVisited = await GetLastVisitedRestaurantAsync();
                 var members = await GetAllMembers();
 
-                var nextMember = members[members.Length - 1];
+                var currentMember = Array.IndexOf(members, lastRestaurantVisited?.PickedBy ?? "");
+                var nextMember = members[(currentMember + 1) % members.Length];
                 var nextMonth = lastRestaurantVisited?.Date.AddMonths(1) ?? DateTime.Now.AddMonths(1);
 
                 var replyMessage = string.Format(Constants.NextChooserFormattingMessage, nextMember, nextMonth.ToString("MMM"));
@@ -150,7 +153,7 @@ namespace ThirdThursdayBot
                 var message = new StringBuilder(Constants.RestaurantListingMessage);
                 foreach (var restaurant in restaurants)
                 {
-                    message.AppendLine($"- '{restaurant.Location}' on {restaurant.Date} ({restaurant.PickedBy})");
+                    message.AppendLine($"- '{restaurant.Location}' on {restaurant.Date.ToString("M/d/yyyy")} ({restaurant.PickedBy})");
                 }
 
                 return message.ToString();
