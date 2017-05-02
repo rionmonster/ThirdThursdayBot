@@ -16,6 +16,7 @@ namespace ThirdThursdayBot
     public class MessagesController : ApiController
     {
         private HttpClient _client;
+        private static string _yelpAuthenticationToken;
 
         public MessagesController()
         {
@@ -53,6 +54,10 @@ namespace ThirdThursdayBot
                     {
                         await ReplyWithUnrecognizableRestaurantAsync(activity, connector);
                     }
+                }
+                else if (Regex.IsMatch(message, "where should we go|recommendation|pick for me", RegexOptions.IgnoreCase))
+                {
+                    await ReplyWithRandomRestaurantRecommendation(activity, connector);
                 }
                 else if (Regex.IsMatch(message, "show|all|list all", RegexOptions.IgnoreCase))
                 {
@@ -169,6 +174,76 @@ namespace ThirdThursdayBot
             var json = await _client.GetStringAsync("/Members/.json");
 
             return JsonConvert.DeserializeObject<string[]>(json);
+        }
+
+        private async Task<ResourceResponse> ReplyWithRandomRestaurantRecommendation(Activity activity, ConnectorClient connector)
+        {
+            try
+            {
+                using (var yelpClient = new HttpClient())
+                {
+                    // Authenticate if necessary
+                    if (string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
+                    {
+                        // Build message body
+                        var authenticationResponse = await yelpClient.PostAsync($"https://api.yelp.com/oauth2/token?client_id={Environment.GetEnvironmentVariable("YelpClientId")}&client_secret={Environment.GetEnvironmentVariable("YelpClientSecret")}&grant_type=client_credentials", null);
+                        // Check response and store token
+                        if (authenticationResponse.IsSuccessStatusCode)
+                        {
+                            var authResponse = JsonConvert.DeserializeObject<YelpAuthenticationResponse>(await authenticationResponse.Content.ReadAsStringAsync());
+                            _yelpAuthenticationToken = authResponse.AccessToken;
+                        }
+                    }
+
+                    // TODO: Clean up this nasty, nasty mess
+
+                    if(!string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
+                    {
+                        yelpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {_yelpAuthenticationToken}");
+
+                        var searchTerms = new[]
+                        {
+                            $"term=food",
+                            $"location={Environment.GetEnvironmentVariable("YelpPreferredLocation")}",
+                            $"limit=50"
+                        };
+
+                        var queryString = string.Join("&", searchTerms);
+
+                        var searchRequest = await yelpClient.GetStringAsync($"https://api.yelp.com/v3/businesses/search?{queryString}");
+
+                        // Get matches
+                        var response = JsonConvert.DeserializeObject<YelpSearchResponse>(searchRequest);
+
+                        // Filter by what we have seen, pick a random one and output it.
+                        var visitedRestaurants = await GetAllVisitedRestaurantsAsync();
+
+                        // TODO: Clean up names better for searching / fuzzy
+                        // Get the list of names and filter them out
+                        var potentialNames = response.Restaurants.Select(r => r.Name)
+                                                                 .Except(visitedRestaurants.Select(r => r.Location));
+
+                        // get a random one
+                        var random = potentialNames.OrderBy(g => Guid.NewGuid()).FirstOrDefault();
+
+                        var choice = response.Restaurants.FirstOrDefault(r => r.Name == random);
+
+                        // Output the message
+                        var replyMessage = string.Format(Constants.RecommendationFormattingMessage, choice.Name, choice.Rating, choice.Location.FullAddress, choice.PhoneNumber);
+
+                        var recommendationResponse = activity.CreateReply(replyMessage);
+                        return await connector.Conversations.ReplyToActivityAsync(recommendationResponse);
+                    }
+
+                    var reply = activity.CreateReply(Constants.UnableToGetRecommendationMessage);
+                    return await connector.Conversations.ReplyToActivityAsync(reply);
+                }
+            }
+            catch (Exception ex)
+            {
+                var failedMessage = activity.CreateReply(Constants.UnableToGetRecommendationMessage);
+                return await connector.Conversations.ReplyToActivityAsync(failedMessage);
+            }
         }
     }
 }
