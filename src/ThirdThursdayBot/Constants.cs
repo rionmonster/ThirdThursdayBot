@@ -20,7 +20,7 @@ namespace ThirdThursdayBot
             @"{0} has not been chosen before. Give it a shot!";
 
         public const string PreviouslyChosenResturantFormattingMessage =
-            @"{0} was chosen by {1} in {2:MMMM} of {2:yyyy}";
+            @"{0} was chosen by {1} in {2:MMMM} of {2:yyyy}.";
 
         public const string UnrecognizableRestaurantMessage =
             @"Sorry, I couldn't figure out what restaurant you were looking for. Try again.";
