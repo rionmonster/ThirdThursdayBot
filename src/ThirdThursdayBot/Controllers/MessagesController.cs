@@ -8,13 +8,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using ThirdThursdayBot.Models;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace ThirdThursdayBot
 {
-    /// <summary>
-    /// NOTE: This is super dirty code that will need to be cleaned up
-    /// </summary>
-
     [BotAuthentication]
     public class MessagesController : ApiController
     {
@@ -28,90 +25,147 @@ namespace ThirdThursdayBot
             };
         }
 
-        /// <summary>
-        /// POST: api/Messages
-        /// Receive a message from a user and reply to it
-        /// </summary>
         public async Task<HttpResponseMessage> Post([FromBody]Activity activity)
         {
-            ConnectorClient connector = new ConnectorClient(new Uri(activity.ServiceUrl));
+            var connector = new ConnectorClient(new Uri(activity.ServiceUrl));
             if (activity.Type == ActivityTypes.Message)
             {
-                // See if our response matched any of our options, if not display messages again
-                var message = activity.Text.Trim().ToLower();
+                var message = activity.Text;
 
                 if (Regex.IsMatch(message, "show|all", RegexOptions.IgnoreCase))
                 {
-                    var reply = activity.CreateReply(await BuildListOfVisitedRestaurantsAsync());
-                    await connector.Conversations.ReplyToActivityAsync(reply);
+                    await ReplyWithRestaurantListingAsync(activity, connector);
                 }
-                else if (Regex.IsMatch(message, "have we been to", RegexOptions.IgnoreCase))
+                else if (Regex.IsMatch(message, "(?<=have we been to )(?<restaurant>[^?]+)", RegexOptions.IgnoreCase))
                 {
-                    // Get the parameter
-                    var target = message.Replace("have we been to", "");
+                    var restaurant = Regex.Match(message, @"(?<=have we been to )(?<restaurant>[^?]+)", RegexOptions.IgnoreCase)?.Groups["restaurant"]?.Value ?? "";
+                    if (!string.IsNullOrWhiteSpace(restaurant))
+                    {
+                        // TODO: Make this more efficient
+                        var vistedRestaurants = await GetAllVisitedRestaurantsAsync();
+                        var visitedRestaurant = vistedRestaurants.FirstOrDefault(r => string.Equals(r.Location, restaurant, StringComparison.OrdinalIgnoreCase));
+                        if (visitedRestaurant != null)
+                        {
+                            await ReplyWithVisitedRestaurantAsync(visitedRestaurant, activity, connector);
+                        }
+                        else
+                        {
+                            await ReplyWithUnchosenRestaurantAsync(restaurant, activity, connector);
+                        }
+                    }
 
-                    // Attempt to query firebase to see if there's a match
-
-                    // If so, let them know when and who picked it
-                    // Get the last pick and then resolve who is next from Firebase
-                    var reply = activity.CreateReply("'' has not been chosen.");
-                    await connector.Conversations.ReplyToActivityAsync(reply);
-
+                    await ReplyWithUnrecognizableRestaurantAsync(activity, connector);
                 }
                 else if (Regex.IsMatch(message, "who's turn|who is next", RegexOptions.IgnoreCase))
                 {
-                    // Get the last pick and then resolve who is next from Firebase
-                    var reply = activity.CreateReply("It is James' turn on ''");
-                    await connector.Conversations.ReplyToActivityAsync(reply);
+                    await ReplyWithNextMemberToChoose(activity, connector);
                 }
                 else
                 {
-                    var reply = activity.CreateReply(GetDefaultResponse());
-                    await connector.Conversations.ReplyToActivityAsync(reply);
+                    await ReplyWithDefaultMessageAsync(activity, connector);
                 }
             }
 
-            var response = Request.CreateResponse(HttpStatusCode.OK);
-            return response;
+            return Request.CreateResponse(HttpStatusCode.OK);
         }
 
-        private string GetDefaultResponse()
-        {
-            // Build message
-            var message = new StringBuilder($"Hi, I'm Third Thursday Bot! I support the following commands: {Environment.NewLine}");
-            var options = new[] {
-                    "'show all' Lists all of the previous Third Thursday selections.",
-                    "'have we been to '{location}' Indicates if specific restaurant has been chosen.",
-                    "'who's turn is it' - Indicates who has the next selection.",
-            };
-
-            foreach (var option in options)
-            {
-                message.AppendLine($"- {option}");
-            }
-
-            return message.ToString();
-        }
-
-        private async Task<string> BuildListOfVisitedRestaurantsAsync()
+        private async Task<ResourceResponse> ReplyWithNextMemberToChoose(Activity activity, ConnectorClient connector)
         {
             try
             {
-                var json = await _client.GetStringAsync("/Restaurants/.json");
-                var restaurants = JsonConvert.DeserializeObject<Restaurant[]>(json);
+                var lastRestaurantVisited = await GetLastVisitedRestaurantAsync();
+                var members = await GetAllMembers();
 
-                var message = new StringBuilder($"The following restaurants have been visited: {Environment.NewLine}");
+                var nextMember = members[members.Length - 1];
+                var nextMonth = lastRestaurantVisited?.Date.AddMonths(1) ?? DateTime.Now.AddMonths(1);
+
+                var replyMessage = string.Format(Constants.NextChooserFormattingMessage, nextMember, nextMonth.ToString("MMM"));
+                var reply = activity.CreateReply(replyMessage);
+                return await connector.Conversations.ReplyToActivityAsync(reply);
+            }
+            catch
+            {
+                var reply = activity.CreateReply("I'm not sure who has the next pick. Try again later.");
+                return await connector.Conversations.ReplyToActivityAsync(reply);
+            }
+        }
+
+        private async Task<ResourceResponse> ReplyWithDefaultMessageAsync(Activity activity, ConnectorClient connector)
+        {
+            var reply = activity.CreateReply(Constants.DefaultResponseMessage);
+
+            return await connector.Conversations.ReplyToActivityAsync(reply);
+        }
+
+        private async Task<ResourceResponse> ReplyWithVisitedRestaurantAsync(Restaurant restaurant, Activity activity, ConnectorClient connector)
+        {
+            var replyMessage = string.Format(Constants.PreviouslyChosenResturantFormattingMessage, restaurant.Location, restaurant.PickedBy, restaurant.Date);
+            var reply = activity.CreateReply(replyMessage);
+
+            return await connector.Conversations.ReplyToActivityAsync(reply);
+        }
+
+        private async Task<ResourceResponse> ReplyWithUnchosenRestaurantAsync(string restaurant, Activity activity, ConnectorClient connector)
+        {
+            var replyMessage = string.Format(Constants.UnchosenRestaurantFormattingMessage, restaurant);
+            var reply = activity.CreateReply(replyMessage);
+
+            return await connector.Conversations.ReplyToActivityAsync(reply);
+        }
+
+        private async Task<ResourceResponse> ReplyWithUnrecognizableRestaurantAsync(Activity activity, ConnectorClient connector)
+        {
+            var reply = activity.CreateReply(Constants.UnrecognizableRestaurantMessage);
+
+            return await connector.Conversations.ReplyToActivityAsync(reply);
+        }
+
+        private async Task<ResourceResponse> ReplyWithRestaurantListingAsync(Activity activity, ConnectorClient connector)
+        {
+            var replyMessage = await GetPreviouslyVisitedRestaurantsMessageAsync();
+            var reply = activity.CreateReply(replyMessage);
+
+            return await connector.Conversations.ReplyToActivityAsync(reply);
+        }
+
+        private async Task<Restaurant[]> GetAllVisitedRestaurantsAsync()
+        {
+            var json = await _client.GetStringAsync("/Restaurants/.json");
+
+            return JsonConvert.DeserializeObject<Restaurant[]>(json);
+        }
+
+        private async Task<Restaurant> GetLastVisitedRestaurantAsync()
+        {
+            var restaurants = await GetAllVisitedRestaurantsAsync();
+            return restaurants.LastOrDefault();
+        }
+
+        private async Task<string> GetPreviouslyVisitedRestaurantsMessageAsync()
+        {
+            try
+            {
+                var restaurants = await GetAllVisitedRestaurantsAsync();
+
+                var message = new StringBuilder(Constants.RestaurantListingMessage);
                 foreach (var restaurant in restaurants)
                 {
-                    message.AppendLine($"- '{restaurant.Location}' ({restaurant.PickedBy})");
+                    message.AppendLine($"- '{restaurant.Location}' on {restaurant.Date} ({restaurant.PickedBy})");
                 }
 
                 return message.ToString();
             }
-            catch(Exception ex)
+            catch
             {
-                return ex.ToString();
+                return Constants.DatabaseAccessIssuesMessage;
             }
+        }
+
+        private async Task<string[]> GetAllMembers()
+        {
+            var json = await _client.GetStringAsync("/Members/.json");
+
+            return JsonConvert.DeserializeObject<string[]>(json);
         }
     }
 }
