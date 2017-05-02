@@ -6,10 +6,7 @@ using Microsoft.Bot.Connector;
 using System;
 using System.Text;
 using System.Text.RegularExpressions;
-using Firebase.Database;
-using Firebase.Database.Query;
 using ThirdThursdayBot.Models;
-using System.Collections.Generic;
 using Newtonsoft.Json;
 
 namespace ThirdThursdayBot
@@ -27,7 +24,7 @@ namespace ThirdThursdayBot
         {
             _client = new HttpClient()
             {
-                BaseAddress = new Uri("todo:put-me-in-azure")
+                BaseAddress = new Uri(Environment.GetEnvironmentVariable("DatabaseEndpoint"))
             };
         }
 
