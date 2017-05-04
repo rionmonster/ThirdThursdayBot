@@ -87,7 +87,7 @@ namespace ThirdThursdayBot
                 var nextMember = members[(currentMember + 1) % members.Length];
                 var nextMonth = lastRestaurantVisited?.Date.AddMonths(1) ?? DateTime.Now.AddMonths(1);
 
-                var replyMessage = string.Format(Constants.NextChooserFormattingMessage, nextMember, nextMonth.ToString("MMM"));
+                var replyMessage = string.Format(Constants.NextChooserFormattingMessage, nextMember, nextMonth.ToString("MMMM"));
                 var reply = activity.CreateReply(replyMessage);
                 return await connector.Conversations.ReplyToActivityAsync(reply);
             }
@@ -187,26 +187,13 @@ namespace ThirdThursdayBot
                     if (!string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
                     {
                         var response = await GetYelpSearchQuery(yelpClient);
-
-                        
-                        // Filter by what we have seen, pick a random one and output it.
                         var visitedRestaurants = await GetAllVisitedRestaurantsAsync();
+                        var recommendation = response.Restaurants
+                                                     .OrderBy(r => Guid.NewGuid())
+                                                     .First(r => visitedRestaurants.All(v => !v.Location.Contains(r.Name) && !r.Name.Contains(v.Location)));
 
-                        // TODO: Clean up names better for searching / fuzzy
-                        // Get the list of names and filter them out
-                        var potentialNames = response.Restaurants.Select(r => r.Name)
-                                                                 .Except(visitedRestaurants.Select(r => r.Location));
-
-                        // get a random one
-                        var random = potentialNames.OrderBy(g => Guid.NewGuid()).FirstOrDefault();
-
-                        var choice = response.Restaurants.FirstOrDefault(r => r.Name == random);
-
-                        // Output the message
-                        var replyMessage = string.Format(Constants.RecommendationFormattingMessage, choice.Name, choice.Rating, choice.Location.FullAddress, choice.PhoneNumber);
-
-                        var recommendationResponse = activity.CreateReply(replyMessage);
-                        return await connector.Conversations.ReplyToActivityAsync(recommendationResponse);
+                        var recommendationMessage = activity.CreateReply(GetFormattedRecommendation(recommendation)); 
+                        return await connector.Conversations.ReplyToActivityAsync(recommendationMessage);
                     }
 
                     var reply = activity.CreateReply(Constants.UnableToGetRecommendationMessage);
@@ -245,6 +232,15 @@ namespace ThirdThursdayBot
 
             var searchRequest = await yelpClient.GetStringAsync($"https://api.yelp.com/v3/businesses/search?{string.Join("&", searchTerms)}");
             return JsonConvert.DeserializeObject<YelpSearchResponse>(searchRequest);
+        }
+
+        private string GetFormattedRecommendation(YelpBusiness choice)
+        {
+            return string.Format(Constants.RecommendationFormattingMessage, 
+                choice.Name, 
+                choice.Rating, 
+                choice.Location.FullAddress, 
+                choice.PhoneNumber);
         }
     }
 }
