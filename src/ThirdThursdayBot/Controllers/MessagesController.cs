@@ -182,39 +182,13 @@ namespace ThirdThursdayBot
             {
                 using (var yelpClient = new HttpClient())
                 {
-                    // Authenticate if necessary
-                    if (string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
+                    await EnsureYelpAuthentication(yelpClient);
+
+                    if (!string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
                     {
-                        // Build message body
-                        var authenticationResponse = await yelpClient.PostAsync($"https://api.yelp.com/oauth2/token?client_id={Environment.GetEnvironmentVariable("YelpClientId")}&client_secret={Environment.GetEnvironmentVariable("YelpClientSecret")}&grant_type=client_credentials", null);
-                        // Check response and store token
-                        if (authenticationResponse.IsSuccessStatusCode)
-                        {
-                            var authResponse = JsonConvert.DeserializeObject<YelpAuthenticationResponse>(await authenticationResponse.Content.ReadAsStringAsync());
-                            _yelpAuthenticationToken = authResponse.AccessToken;
-                        }
-                    }
+                        var response = await GetYelpSearchQuery(yelpClient);
 
-                    // TODO: Clean up this nasty, nasty mess
-
-                    if(!string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
-                    {
-                        yelpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {_yelpAuthenticationToken}");
-
-                        var searchTerms = new[]
-                        {
-                            $"term=food",
-                            $"location={Environment.GetEnvironmentVariable("YelpPreferredLocation")}",
-                            $"limit=50"
-                        };
-
-                        var queryString = string.Join("&", searchTerms);
-
-                        var searchRequest = await yelpClient.GetStringAsync($"https://api.yelp.com/v3/businesses/search?{queryString}");
-
-                        // Get matches
-                        var response = JsonConvert.DeserializeObject<YelpSearchResponse>(searchRequest);
-
+                        
                         // Filter by what we have seen, pick a random one and output it.
                         var visitedRestaurants = await GetAllVisitedRestaurantsAsync();
 
@@ -244,6 +218,33 @@ namespace ThirdThursdayBot
                 var failedMessage = activity.CreateReply(Constants.UnableToGetRecommendationMessage);
                 return await connector.Conversations.ReplyToActivityAsync(failedMessage);
             }
+        }
+        
+        private async Task EnsureYelpAuthentication(HttpClient yelpClient)
+        {
+            if (string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
+            {
+                var authenticationResponse = await yelpClient.PostAsync($"https://api.yelp.com/oauth2/token?client_id={Environment.GetEnvironmentVariable("YelpClientId")}&client_secret={Environment.GetEnvironmentVariable("YelpClientSecret")}&grant_type=client_credentials", null);
+                if (authenticationResponse.IsSuccessStatusCode)
+                {
+                    var authResponse = JsonConvert.DeserializeObject<YelpAuthenticationResponse>(await authenticationResponse.Content.ReadAsStringAsync());
+                    _yelpAuthenticationToken = authResponse.AccessToken;
+                }
+            }
+        }
+
+        private async Task<YelpSearchResponse> GetYelpSearchQuery(HttpClient yelpClient)
+        {
+            yelpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {_yelpAuthenticationToken}");
+            var searchTerms = new[]
+            {
+                            $"term=food",
+                            $"location={Environment.GetEnvironmentVariable("YelpPreferredLocation")}",
+                            $"limit=50"
+            };
+
+            var searchRequest = await yelpClient.GetStringAsync($"https://api.yelp.com/v3/businesses/search?{string.Join("&", searchTerms)}");
+            return JsonConvert.DeserializeObject<YelpSearchResponse>(searchRequest);
         }
     }
 }
