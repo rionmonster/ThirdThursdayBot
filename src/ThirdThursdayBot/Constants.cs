@@ -6,8 +6,8 @@ namespace ThirdThursdayBot
     {
         public readonly static string DefaultResponseMessage =
             $"Hi, I'm Third Thursday Bot! I support the following commands: {Environment.NewLine}" +
-            $"- 'show all' Lists all of the previous Third Thursday selections. {Environment.NewLine}" +
-            $"- 'have we been to {{restaurant}}?' Indicates if specific restaurant has been chosen. {Environment.NewLine}" +
+            $"- 'show all' - Lists all of the previous Third Thursday selections. {Environment.NewLine}" +
+            $"- 'have we been to {{restaurant}}?' - Indicates if specific restaurant has been chosen. {Environment.NewLine}" +
             $"- 'who's next' - Indicates who has the next selection. {Environment.NewLine}" +
             $"- 'recommendation' - Get a random recommendation in the area. {Environment.NewLine}";
 
