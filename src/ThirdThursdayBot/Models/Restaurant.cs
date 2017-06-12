@@ -13,6 +13,5 @@ namespace ThirdThursdayBot.Models
 
         [JsonProperty("Date")]
         public DateTime Date { get; private set; }
-
     }
 }
