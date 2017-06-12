@@ -4,26 +4,27 @@ using System.Threading.Tasks;
 using System.Web.Http;
 using Microsoft.Bot.Connector;
 using System;
-using System.Text;
 using System.Text.RegularExpressions;
 using ThirdThursdayBot.Models;
-using Newtonsoft.Json;
 using System.Linq;
+using ThirdThursdayBot.Services;
 
 namespace ThirdThursdayBot
 {
     [BotAuthentication]
     public class MessagesController : ApiController
     {
-        private HttpClient _client;
-        private static string _yelpAuthenticationToken;
+        private readonly IFirebaseService _service;
+        private readonly IYelpService _yelpService;
 
         public MessagesController()
         {
-            _client = new HttpClient()
-            {
-                BaseAddress = new Uri(Environment.GetEnvironmentVariable("DatabaseEndpoint"))
-            };
+            _service = new FirebaseService(Environment.GetEnvironmentVariable("DatabaseEndpoint"));
+            _yelpService = new YelpService(
+                Environment.GetEnvironmentVariable("YelpClientId"),
+                Environment.GetEnvironmentVariable("YelpClientSecret"),
+                Environment.GetEnvironmentVariable("YelpPreferredLocation")
+            );
         }
 
         public async Task<HttpResponseMessage> Post([FromBody]Activity activity)
@@ -38,7 +39,7 @@ namespace ThirdThursdayBot
                     var restaurant = Regex.Match(message, @"(?<=have we been to )(?<restaurant>[^?]+)", RegexOptions.IgnoreCase)?.Groups["restaurant"]?.Value ?? "";
                     if (!string.IsNullOrWhiteSpace(restaurant))
                     {
-                        var vistedRestaurants = await GetAllVisitedRestaurantsAsync();
+                        var vistedRestaurants = await _service.GetAllVisitedRestaurantsAsync();
                         var visitedRestaurant = vistedRestaurants.FirstOrDefault(r => string.Equals(r.Location, restaurant, StringComparison.OrdinalIgnoreCase));
                         if (visitedRestaurant != null)
                         {
@@ -79,8 +80,8 @@ namespace ThirdThursdayBot
         {
             try
             {
-                var lastRestaurantVisited = await GetLastVisitedRestaurantAsync();
-                var members = await GetAllMembers();
+                var lastRestaurantVisited = await _service.GetLastVisitedRestaurantAsync();
+                var members = await _service.GetAllMembers();
 
                 var currentMember = Array.IndexOf(members, lastRestaurantVisited?.PickedBy ?? "");
                 var nextMember = members[(currentMember + 1) % members.Length];
@@ -129,116 +130,35 @@ namespace ThirdThursdayBot
 
         private async Task<ResourceResponse> ReplyWithRestaurantListingAsync(Activity activity, ConnectorClient connector)
         {
-            var replyMessage = await GetPreviouslyVisitedRestaurantsMessageAsync();
+            var replyMessage = await _service.GetPreviouslyVisitedRestaurantsMessageAsync();
             var reply = activity.CreateReply(replyMessage);
 
             return await connector.Conversations.ReplyToActivityAsync(reply);
-        }
-
-        private async Task<Restaurant[]> GetAllVisitedRestaurantsAsync()
-        {
-            var json = await _client.GetStringAsync("/Restaurants/.json");
-
-            return JsonConvert.DeserializeObject<Restaurant[]>(json);
-        }
-
-        private async Task<Restaurant> GetLastVisitedRestaurantAsync()
-        {
-            var restaurants = await GetAllVisitedRestaurantsAsync();
-            return restaurants.LastOrDefault();
-        }
-
-        private async Task<string> GetPreviouslyVisitedRestaurantsMessageAsync()
-        {
-            try
-            {
-                var restaurants = await GetAllVisitedRestaurantsAsync();
-
-                var message = new StringBuilder(Messages.RestaurantListingMessage);
-                foreach (var restaurant in restaurants)
-                {
-                    message.AppendLine($"- '{restaurant.Location}' on {restaurant.Date.ToString("M/d/yyyy")} ({restaurant.PickedBy})");
-                }
-
-                return message.ToString();
-            }
-            catch
-            {
-                return Messages.DatabaseAccessIssuesMessage;
-            }
-        }
-
-        private async Task<string[]> GetAllMembers()
-        {
-            var json = await _client.GetStringAsync("/Members/.json");
-
-            return JsonConvert.DeserializeObject<string[]>(json);
         }
 
         private async Task<ResourceResponse> ReplyWithRandomRestaurantRecommendation(Activity activity, ConnectorClient connector)
         {
             try
             {
-                using (var yelpClient = new HttpClient())
-                {
-                    await EnsureYelpAuthentication(yelpClient);
+                var previouslyVisistedRestaurants = await _service.GetAllVisitedRestaurantsAsync();
+                var recommendation = await _yelpService.GetRandomUnvisitedRestaurant(previouslyVisistedRestaurants);
 
-                    if (!string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
-                    {
-                        var response = await GetYelpSearchQuery(yelpClient);
-                        var visitedRestaurants = await GetAllVisitedRestaurantsAsync();
-                        var recommendation = response.Restaurants
-                                                     .OrderBy(r => Guid.NewGuid())
-                                                     .First(r => visitedRestaurants.All(v => !v.Location.Contains(r.Name) && !r.Name.Contains(v.Location)));
-
-                        var recommendationMessage = activity.CreateReply(GetFormattedRecommendation(recommendation)); 
-                        return await connector.Conversations.ReplyToActivityAsync(recommendationMessage);
-                    }
-
-                    var reply = activity.CreateReply(Messages.UnableToGetRecommendationMessage);
-                    return await connector.Conversations.ReplyToActivityAsync(reply);
-                }
+                var recommendationMessage = activity.CreateReply(GetFormattedRecommendation(recommendation)); 
+                return await connector.Conversations.ReplyToActivityAsync(recommendationMessage);
             }
-            catch (Exception ex)
+            catch
             {
                 var failedMessage = activity.CreateReply(Messages.UnableToGetRecommendationMessage);
                 return await connector.Conversations.ReplyToActivityAsync(failedMessage);
             }
         }
-        
-        private async Task EnsureYelpAuthentication(HttpClient yelpClient)
-        {
-            if (string.IsNullOrWhiteSpace(_yelpAuthenticationToken))
-            {
-                var authenticationResponse = await yelpClient.PostAsync($"https://api.yelp.com/oauth2/token?client_id={Environment.GetEnvironmentVariable("YelpClientId")}&client_secret={Environment.GetEnvironmentVariable("YelpClientSecret")}&grant_type=client_credentials", null);
-                if (authenticationResponse.IsSuccessStatusCode)
-                {
-                    var authResponse = JsonConvert.DeserializeObject<YelpAuthenticationResponse>(await authenticationResponse.Content.ReadAsStringAsync());
-                    _yelpAuthenticationToken = authResponse.AccessToken;
-                }
-            }
-        }
-
-        private async Task<YelpSearchResponse> GetYelpSearchQuery(HttpClient yelpClient)
-        {
-            yelpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {_yelpAuthenticationToken}");
-            var searchTerms = new[]
-            {
-                            $"term=food",
-                            $"location={Environment.GetEnvironmentVariable("YelpPreferredLocation")}",
-                            $"limit=50"
-            };
-
-            var searchRequest = await yelpClient.GetStringAsync($"https://api.yelp.com/v3/businesses/search?{string.Join("&", searchTerms)}");
-            return JsonConvert.DeserializeObject<YelpSearchResponse>(searchRequest);
-        }
 
         private string GetFormattedRecommendation(YelpBusiness choice)
         {
-            return string.Format(Messages.RecommendationFormattingMessage, 
-                choice.Name, 
-                choice.Rating, 
-                choice.Location.FullAddress, 
+            return string.Format(Messages.RecommendationFormattingMessage,
+                choice.Name,
+                choice.Rating,
+                choice.Location.FullAddress,
                 choice.PhoneNumber);
         }
     }
