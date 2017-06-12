@@ -38,7 +38,6 @@ namespace ThirdThursdayBot
                     var restaurant = Regex.Match(message, @"(?<=have we been to )(?<restaurant>[^?]+)", RegexOptions.IgnoreCase)?.Groups["restaurant"]?.Value ?? "";
                     if (!string.IsNullOrWhiteSpace(restaurant))
                     {
-                        // TODO: Make this more efficient
                         var vistedRestaurants = await GetAllVisitedRestaurantsAsync();
                         var visitedRestaurant = vistedRestaurants.FirstOrDefault(r => string.Equals(r.Location, restaurant, StringComparison.OrdinalIgnoreCase));
                         if (visitedRestaurant != null)
@@ -87,7 +86,7 @@ namespace ThirdThursdayBot
                 var nextMember = members[(currentMember + 1) % members.Length];
                 var nextMonth = lastRestaurantVisited?.Date.AddMonths(1) ?? DateTime.Now.AddMonths(1);
 
-                var replyMessage = string.Format(Constants.NextChooserFormattingMessage, nextMember, nextMonth.ToString("MMMM"));
+                var replyMessage = string.Format(Messages.NextChooserFormattingMessage, nextMember, nextMonth.ToString("MMMM"));
                 var reply = activity.CreateReply(replyMessage);
                 return await connector.Conversations.ReplyToActivityAsync(reply);
             }
@@ -100,14 +99,14 @@ namespace ThirdThursdayBot
 
         private async Task<ResourceResponse> ReplyWithDefaultMessageAsync(Activity activity, ConnectorClient connector)
         {
-            var reply = activity.CreateReply(Constants.DefaultResponseMessage);
+            var reply = activity.CreateReply(Messages.DefaultResponseMessage);
 
             return await connector.Conversations.ReplyToActivityAsync(reply);
         }
 
         private async Task<ResourceResponse> ReplyWithVisitedRestaurantAsync(Restaurant restaurant, Activity activity, ConnectorClient connector)
         {
-            var replyMessage = string.Format(Constants.PreviouslyChosenResturantFormattingMessage, restaurant.Location, restaurant.PickedBy, restaurant.Date);
+            var replyMessage = string.Format(Messages.PreviouslyChosenResturantFormattingMessage, restaurant.Location, restaurant.PickedBy, restaurant.Date);
             var reply = activity.CreateReply(replyMessage);
 
             return await connector.Conversations.ReplyToActivityAsync(reply);
@@ -115,7 +114,7 @@ namespace ThirdThursdayBot
 
         private async Task<ResourceResponse> ReplyWithUnchosenRestaurantAsync(string restaurant, Activity activity, ConnectorClient connector)
         {
-            var replyMessage = string.Format(Constants.UnchosenRestaurantFormattingMessage, restaurant);
+            var replyMessage = string.Format(Messages.UnchosenRestaurantFormattingMessage, restaurant);
             var reply = activity.CreateReply(replyMessage);
 
             return await connector.Conversations.ReplyToActivityAsync(reply);
@@ -123,7 +122,7 @@ namespace ThirdThursdayBot
 
         private async Task<ResourceResponse> ReplyWithUnrecognizableRestaurantAsync(Activity activity, ConnectorClient connector)
         {
-            var reply = activity.CreateReply(Constants.UnrecognizableRestaurantMessage);
+            var reply = activity.CreateReply(Messages.UnrecognizableRestaurantMessage);
 
             return await connector.Conversations.ReplyToActivityAsync(reply);
         }
@@ -155,7 +154,7 @@ namespace ThirdThursdayBot
             {
                 var restaurants = await GetAllVisitedRestaurantsAsync();
 
-                var message = new StringBuilder(Constants.RestaurantListingMessage);
+                var message = new StringBuilder(Messages.RestaurantListingMessage);
                 foreach (var restaurant in restaurants)
                 {
                     message.AppendLine($"- '{restaurant.Location}' on {restaurant.Date.ToString("M/d/yyyy")} ({restaurant.PickedBy})");
@@ -165,7 +164,7 @@ namespace ThirdThursdayBot
             }
             catch
             {
-                return Constants.DatabaseAccessIssuesMessage;
+                return Messages.DatabaseAccessIssuesMessage;
             }
         }
 
@@ -196,13 +195,13 @@ namespace ThirdThursdayBot
                         return await connector.Conversations.ReplyToActivityAsync(recommendationMessage);
                     }
 
-                    var reply = activity.CreateReply(Constants.UnableToGetRecommendationMessage);
+                    var reply = activity.CreateReply(Messages.UnableToGetRecommendationMessage);
                     return await connector.Conversations.ReplyToActivityAsync(reply);
                 }
             }
             catch (Exception ex)
             {
-                var failedMessage = activity.CreateReply(Constants.UnableToGetRecommendationMessage);
+                var failedMessage = activity.CreateReply(Messages.UnableToGetRecommendationMessage);
                 return await connector.Conversations.ReplyToActivityAsync(failedMessage);
             }
         }
@@ -236,7 +235,7 @@ namespace ThirdThursdayBot
 
         private string GetFormattedRecommendation(YelpBusiness choice)
         {
-            return string.Format(Constants.RecommendationFormattingMessage, 
+            return string.Format(Messages.RecommendationFormattingMessage, 
                 choice.Name, 
                 choice.Rating, 
                 choice.Location.FullAddress, 

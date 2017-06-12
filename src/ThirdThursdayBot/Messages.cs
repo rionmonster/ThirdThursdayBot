@@ -2,7 +2,7 @@
 
 namespace ThirdThursdayBot
 {
-    public class Constants
+    public class Messages
     {
         public readonly static string DefaultResponseMessage =
             $"Hi, I'm Third Thursday Bot! I support the following commands: {Environment.NewLine}" +
