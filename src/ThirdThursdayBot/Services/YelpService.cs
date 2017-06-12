@@ -23,6 +23,9 @@ namespace ThirdThursdayBot.Services
             _preferredLocation = preferredLocation;
         }
 
+        /// <summary>
+        /// Gets a random, unvisited Restauraunt from Yelp's API
+        /// </summary>
         public async Task<YelpBusiness> GetRandomUnvisitedRestaurantAsync(Restaurant[] restaurantsToExclude)
         {
             try
@@ -53,6 +56,9 @@ namespace ThirdThursdayBot.Services
             }
         }
 
+        /// <summary>
+        /// Ensures that the Yelp API has been authenticated for the current request
+        /// </summary>
         private async Task EnsureYelpAuthenticationAsync(HttpClient yelpClient)
         {
             if (string.IsNullOrWhiteSpace(_authToken))
@@ -66,6 +72,9 @@ namespace ThirdThursdayBot.Services
             }
         }
 
+        /// <summary>
+        /// Sets the headers and search terms for the Yelp search query
+        /// </summary>
         private async Task<YelpSearchResponse> GetYelpSearchQueryAsync(HttpClient yelpClient)
         {
             yelpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {_authToken}");
@@ -80,6 +89,4 @@ namespace ThirdThursdayBot.Services
             return JsonConvert.DeserializeObject<YelpSearchResponse>(searchRequest);
         }
     }
-
-    
 }
