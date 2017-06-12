@@ -53,7 +53,7 @@ namespace ThirdThursdayBot.Services
             }
         }
 
-        public async Task<string[]> GetAllMembers()
+        public async Task<string[]> GetAllMembersAsync()
         {
             var json = await _client.GetStringAsync("/Members/.json");
 

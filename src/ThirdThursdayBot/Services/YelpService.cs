@@ -23,13 +23,13 @@ namespace ThirdThursdayBot.Services
             _preferredLocation = preferredLocation;
         }
 
-        public async Task<YelpBusiness> GetRandomUnvisitedRestaurant(Restaurant[] restaurantsToExclude)
+        public async Task<YelpBusiness> GetRandomUnvisitedRestaurantAsync(Restaurant[] restaurantsToExclude)
         {
             try
             {
                 using (var yelpClient = new HttpClient())
                 {
-                    await EnsureYelpAuthentication(yelpClient);
+                    await EnsureYelpAuthenticationAsync(yelpClient);
 
                     if (string.IsNullOrWhiteSpace(_authToken))
                     {
@@ -38,7 +38,7 @@ namespace ThirdThursdayBot.Services
                         return null;
                     }
 
-                    var response = await GetYelpSearchQuery(yelpClient);
+                    var response = await GetYelpSearchQueryAsync(yelpClient);
                     var recommendation = response.Restaurants
                                                  .OrderBy(r => Guid.NewGuid())
                                                  .First(r => restaurantsToExclude.All(v => !v.Location.Contains(r.Name) && !r.Name.Contains(v.Location)));
@@ -53,7 +53,7 @@ namespace ThirdThursdayBot.Services
             }
         }
 
-        private async Task EnsureYelpAuthentication(HttpClient yelpClient)
+        private async Task EnsureYelpAuthenticationAsync(HttpClient yelpClient)
         {
             if (string.IsNullOrWhiteSpace(_authToken))
             {
@@ -66,7 +66,7 @@ namespace ThirdThursdayBot.Services
             }
         }
 
-        private async Task<YelpSearchResponse> GetYelpSearchQuery(HttpClient yelpClient)
+        private async Task<YelpSearchResponse> GetYelpSearchQueryAsync(HttpClient yelpClient)
         {
             yelpClient.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", $"Bearer {_authToken}");
             var searchTerms = new[]
@@ -81,8 +81,5 @@ namespace ThirdThursdayBot.Services
         }
     }
 
-    public interface IYelpService
-    {
-        Task<YelpBusiness> GetRandomUnvisitedRestaurant(Restaurant[] previouslyVisitedRestaurants);
-    }
+    
 }

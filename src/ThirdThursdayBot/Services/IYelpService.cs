@@ -5,6 +5,6 @@ namespace ThirdThursdayBot.Services
 {
     public interface IYelpService
     {
-        Task<YelpBusiness> GetRandomUnvisitedRestaurant(Restaurant[] previouslyVisitedRestaurants);
+        Task<YelpBusiness> GetRandomUnvisitedRestaurantAsync(Restaurant[] previouslyVisitedRestaurants);
     }
 }

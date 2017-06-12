@@ -8,6 +8,6 @@ namespace ThirdThursdayBot.Services
         Task<Restaurant[]> GetAllVisitedRestaurantsAsync();
         Task<Restaurant> GetLastVisitedRestaurantAsync();
         Task<string> GetPreviouslyVisitedRestaurantsMessageAsync();
-        Task<string[]> GetAllMembers();
+        Task<string[]> GetAllMembersAsync();
     }
 }
