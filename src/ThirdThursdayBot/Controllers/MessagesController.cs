@@ -81,7 +81,7 @@ namespace ThirdThursdayBot
             try
             {
                 var lastRestaurantVisited = await _service.GetLastVisitedRestaurantAsync();
-                var members = await _service.GetAllMembers();
+                var members = await _service.GetAllMembersAsync();
 
                 var currentMember = Array.IndexOf(members, lastRestaurantVisited?.PickedBy ?? "");
                 var nextMember = members[(currentMember + 1) % members.Length];
@@ -141,7 +141,7 @@ namespace ThirdThursdayBot
             try
             {
                 var previouslyVisistedRestaurants = await _service.GetAllVisitedRestaurantsAsync();
-                var recommendation = await _yelpService.GetRandomUnvisitedRestaurant(previouslyVisistedRestaurants);
+                var recommendation = await _yelpService.GetRandomUnvisitedRestaurantAsync(previouslyVisistedRestaurants);
 
                 var recommendationMessage = activity.CreateReply(GetFormattedRecommendation(recommendation)); 
                 return await connector.Conversations.ReplyToActivityAsync(recommendationMessage);
