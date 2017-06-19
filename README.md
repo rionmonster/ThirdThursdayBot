@@ -35,7 +35,7 @@ At present, Third Thursday Bot supports the following commands:
 
 To configure a Third Thursday of your own, you would just need to do the following:
 
- - **Create a Microsoft Bot Framework Account** - This bot relies on the Microsoft Bot Framework for its supported integrations, which can make getting started and actually using a bot a breeze.
+ - **Create a Microsoft Bot Framework Account** - This bot relies on [the Microsoft Bot Framework](https://dev.botframework.com/) for its supported integrations, which can make getting started and actually using a bot a breeze.
  - **Set up Firebase** - This example uses [Firebase](https://firebase.google.com/) as a database, which can be set up in a matter of minutes.
  - **Configure Twilio (Optional)** - If you want to take advantage of SMS messaging to/from the bot, you'll need to create and configure a [Twilio](https://www.twilio.com/) account.
  
