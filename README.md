@@ -37,7 +37,7 @@ To configure a Third Thursday of your own, you would just need to do the followi
 
  - **Create a Microsoft Bot Framework Account** - This bot relies on the Microsoft Bot Framework for its supported integrations, which can make getting started and actually using a bot a breeze.
  - **Set up Firebase** - This example uses [Firebase](https://firebase.google.com/) as a database, which can be set up in a matter of minutes.
- - **Configure Twilio (Optional)** - If you want to take advantage of SMS messaging to/from the bot, you'll need to create and configure a Twilio account.
+ - **Configure Twilio (Optional)** - If you want to take advantage of SMS messaging to/from the bot, you'll need to create and configure a [Twilio](https://www.twilio.com/) account.
  
 With regards to Firebase, your schema is going to look something like this (if you are going to be reproducing an example similar to this one):
  
@@ -55,4 +55,4 @@ read in and used by the bot at runtime:
 You can read more on this process within the following blog posts:
  
  - [How the Microsoft Bot Framework Changed Where My Friends and I Eat: Part 1](http://rion.io/2017/05/11/how-the-microsoft-bot-framework-changed-where-my-friends-and-i-eat-part-1/)
- - [How the Microsoft Bot Framework Changed Where My Friends and I Eat: Part 2](http://rion.io/2017/05/11/how-the-microsoft-bot-framework-changed-where-my-friends-and-i-eat-part-2/)
+ - [How the Microsoft Bot Framework Changed Where My Friends and I Eat: Part 2](http://rion.io/2017/06/19/how-the-microsoft-bot-framework-changed-where-my-friends-and-i-eat-part-2/)
