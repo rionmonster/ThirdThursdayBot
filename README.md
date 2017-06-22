@@ -20,7 +20,7 @@ Fairly simple right? Well, after doing this for over two years, it can be tough 
 
 You can [visit Third Thursday Bot in action here](http://thirdthursdaybot.azurewebsites.net/) and see a basic example of some of the interactions that you can perform with it below:
 
-![listing restaurants](https://raw.githubusercontent.com/rionmonster/ThirdThursdayBot/master/art/interactions.png?raw=true)
+![listing restaurants](https://raw.githubusercontent.com/rionmonster/ThirdThursdayBot/master/art/interactions.gif?raw=true)
 
 ## Supported Commands
 
