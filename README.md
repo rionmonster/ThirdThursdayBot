@@ -20,7 +20,7 @@ Fairly simple right? Well, after doing this for over two years, it can be tough 
 
 You can [visit Third Thursday Bot in action here](http://thirdthursdaybot.azurewebsites.net/) and see a basic example of some of the interactions that you can perform with it below:
 
-![listing restaurants](http://rion.io/content/images/2017/05/listing-restaurants.gif)
+![listing restaurants](https://raw.githubusercontent.com/rionmonster/ThirdThursdayBot/master/art/interactions.png?raw=true)
 
 ## Supported Commands
 
@@ -50,7 +50,7 @@ With regards to Firebase, your schema is going to look something like this (if y
 Finally, this example is hosted in Azure and uses it to define all of the available environmental variables for your private keys, HTTP endpoint locations, and more so that they can be 
 read in and used by the bot at runtime:
 
-![Azure Setup](https://rionghost.azurewebsites.net/content/images/2017/06/AppSettingsInAzure.PNG)
+![Azure Setup](https://raw.githubusercontent.com/rionmonster/ThirdThursdayBot/master/art/settings.png?raw=true)
 
 You can read more on this process within the following blog posts:
  
